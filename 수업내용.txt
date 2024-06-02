@@ -1,0 +1,187 @@
+case
+깃허브액션 - nginix - was1 - mariadb
+                    - was2 - redis
+
+강사님 깃허브주소
+https://github.com/masungil70/devops
+레포지토리
+devops_step0~
+
+
+JDK 설치
+sudo apt update
+sudo apt install openjdk-17-jdk
+
+vscode 설치
+- extension : java, springboot 설치
+
+
+인프런 강의 자료
+https://jscode.notion.site/a296752baf914e8ab95a1782a64800c2
+
+
+################################################################
+
+################################################################
+
+AWS에 Docker 설치
+# 필요패키지 설치
+sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+# Docker 공식GPG키 추가
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+# Docker 공식 apt repository 추가
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+# update
+sudo apt-get update
+# Docker 설치
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+# Docker 설치 확인
+sudo systemctl status docker
+
+
+# 중지 | 시작 | 재시작
+sudo systemctl stop | start | restart docker
+
+# 이미지 확인
+$ sudo docker images
+
+# docker 명령어 실행할때 sudo 안붙이려면
+sudo usermod -aG docker $USER
+newgrp docker
+
+###############################
+# Nginx 설치
+docker pull nginx
+
+# Nginx 컨테이너 실행할때 -p host:docker
+docker [container] run --name webserver -d -p 8080:80 nginx
+
+###############################
+
+
+# 실행중인 컨테이너 확인
+docker ps [-a]
+
+
+# 특정 컨테이너 중지
+$ docker stop 컨테이너명
+
+# 특정 컨테이너 시작
+$ docker start 컨테이너명
+
+# 특정 컨테이너 제거
+$ docker rm 컨테이너명
+
+# 특정 이미지 제거 (컨테이너 중지된 상태)
+$ docker rmi 이미지명
+
+
+####
+mariadb 설치
+###
+
+docker pull mariadb
+
+docker run -p 3306:3306 --name {컨테이너 이름 작성} -e MARIADB_ROOT_PASSWORD={비밀번호} -d mariadb
+예) docker run -p 3306:3306 --name devops-mariadb -e MARIADB_ROOT_PASSWORD=1004koreatech -e MARIADB_DATABASE=koreatech-db -e MARIADB_USER=koreatech -e MARIADB_PASSWORD=1004koreatech -v ~/db_data/devops:/var/lib/mysql:rw -d mariadb
+
+
+# Docer-compose 설치
+sudo curl -L https://github.com/docker/compose/releases/download/v2.5.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+# 실행권한 부여
+sudo chmod +x /usr/local/bin/docker-compose
+
+# docker-compose | docker compose 로 실행
+
+docker-compose.yml 파일 생성
+
+version: '3.1'
+services:
+  mariadb:
+    container_name: devops-mariadb
+    image: mariadb:10
+    restart: always
+    ports:
+      - 3306:3306
+    volumes:
+      - ~/db_data/devops:/var/lib/mysql:rw
+    user: mysql
+    environment:
+      MARIADB_DATABASE: koreatech_db
+      MARIADB_USER: koreatech
+      MARIADB_PASSWORD: 1004koreatech
+      MARIADB_ROOT_PASSWORD: 1004koreatech
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    container_name: redis
+
+# AWS 폴더 생성
+mkdir db_data
+mkdir db_data/devops
+sudo chmod 777 db_data/devops/
+
+# docker compose 실행
+$ docker compose up
+
+# docker 내부로 접근
+$ docker exec -it {컨테이너 이름} 명령어
+$ docker exec -it {컨테이너 이름} bash (배시쉘로 접속)
+
+# docker 내부 mariadb 접속
+docker exec -it {컨테이너 이름} mariadb -uroot -p
+
+
+# Dockerfile
+# 이미지 생성, 배포된파일 실행...
+
+FROM eclipse-temurin:17-jdk-jammy as builder
+VOLUME /tmp
+COPY /home/ubuntu/devops1/build/libs/devops1-0.0.1-SNAPSHOT.jar app.jar
+ENV USE_POST 8080
+ENV USE_PROFILE server
+ENTRYPOINT ["java","-jar","-Dspring.profiles.active=${USE_PROFILE}", "-Dserver.port=${USE_POST}", "/app.jar"]
+
+#maven로 된 프로젝트일 경우 -> docker build --build-arg JAR_FILE=target/*.jar -t masungil/devops:0.1  .
+#gradle로 된 프로젝트일 경우 -> docker build -t masungil/devops:0.1  .
+# -Dspring.profiles.active=값 -> appication-값.properties
+
+
+# 단순 jar파일만 기본값으로 생성
+FROM eclipse-temurin:17-jdk-jammy as builder
+VOLUME /tmp
+COPY /home/ubuntu/devops1/build/libs/devops1-0.0.1-SNAPSHOT.jar app.jar
+ENTRYPOINT ["java","-jar","/app.jar"]
+
+# Dockerfile로 이미지 생성
+$ docker build -t withsky999/devops1 .
+
+# 끝나고 docker images 해보면 보임
+
+# springboot 포함된 도커이미지 컨테이너 실행권한
+$ docker run --name devops1 -p 8080:8080 withsky999/devops1
+
+# docker hub로 배포
+# repo 생성
+# push
+# docker hub에 로그인 후 push
+$ docker push 이미지명:태그
+
+# 이제 이미지 삭제 후 다시 받을 수 있음
+$ docker pull withsky999/devops1
+
+#######################################
+# github actions
+#######################################
+# gitflow 설정
+
+# 레퍼지토리 Settings > Actions > Runners
+# New 해서 Download, Configure 소스 실제 운영서버에서 실행
+
+
+# github에 workflow에서 yml 생성
+# github에 Settings > Secrets and variables > Actions

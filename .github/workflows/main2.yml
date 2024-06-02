@@ -17,10 +17,13 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-
+        
+    - name : 권한
+      run : chmod +x ./gradlew
+      
         # Gradle test를 실행한다
     - name: Test with Gradle
-      run: sudo ./gradlew --info test
+      run: ./gradlew --info test
 
     # 2. Spring Boot 애플리케이션 빌드
     - name: Build with Gradle

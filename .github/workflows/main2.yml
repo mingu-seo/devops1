@@ -20,7 +20,7 @@ jobs:
 
         # Gradle test를 실행한다
     - name: Test with Gradle
-      run: ./gradlew --info test
+      run: sudo ./gradlew --info test
 
     # 2. Spring Boot 애플리케이션 빌드
     - name: Build with Gradle
